@@ -1,6 +1,7 @@
 use crate::config::{
     cli::CliArgs,
-    json_config::{get_config_path, Config, DatabaseConfig},
+    json_config::{Config, DatabaseConfig},
+    utility::Utility,
 };
 use mysql_async::Error as MySQLError;
 use mysql_async::{OptsBuilder, Pool};
@@ -11,7 +12,7 @@ pub struct Database {
 
 impl Database {
     pub fn new() -> Self {
-        let config_path = get_config_path();
+        let config_path = Utility::get_config_path();
         println!("Config path: {:?}", config_path);
         let config = Config::from_json(
             &std::fs::read_to_string(config_path).expect("Error reading config.json"),

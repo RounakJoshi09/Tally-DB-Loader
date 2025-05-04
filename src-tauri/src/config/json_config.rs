@@ -48,20 +48,3 @@ impl Config {
         self.tally = tally;
     }
 }
-
-pub fn get_app_base_path() -> PathBuf {
-    let app_path = env::current_exe().expect("Failed to get current exe path");
-    app_path
-        .parent()
-        .unwrap()
-        .parent()
-        .unwrap()
-        .parent()
-        .expect("Failed to get parent path")
-        .to_path_buf()
-}
-
-pub fn get_config_path() -> PathBuf {
-    let base_path = get_app_base_path();
-    base_path.join("config.json")
-}

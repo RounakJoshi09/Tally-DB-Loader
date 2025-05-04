@@ -1,15 +1,12 @@
 use std::{error::Error, sync::MutexGuard};
 
 use super::database::Database;
-use crate::{
-    config::{
-        cli::CliArgs,
-        definition::YamlTableConfig,
-        json_config::{get_app_base_path, get_config_path, Config, TallyConfig},
-        utility::Utility,
-        yaml_config::DataExportConfig,
-    },
-    server::tally_xml::COMPANY_XML,
+use crate::config::{
+    cli::CliArgs,
+    definition::YamlTableConfig,
+    json_config::{Config, TallyConfig},
+    utility::Utility,
+    yaml_config::DataExportConfig,
 };
 pub struct Tally {
     config: TallyConfig,
@@ -21,7 +18,7 @@ pub struct Tally {
 
 impl Tally {
     pub fn new() -> Self {
-        let config_path = get_config_path();
+        let config_path = Utility::get_config_path();
         let config = Config::from_json(
             &std::fs::read_to_string(config_path).expect("Error reading config.json"),
         )
@@ -48,7 +45,7 @@ impl Tally {
         log::info!("Tally configuration updated from command line arguments.");
     }
 
-    fn parse_yaml(&mut self, path_tally_export_defi: std::path::PathBuf) {
+    fn parse_tally_export_config(&mut self, path_tally_export_defi: std::path::PathBuf) {
         let data_export_config = DataExportConfig::parse_yaml_file(path_tally_export_defi)
             .expect("Failed to parse YAML file");
         if let Some(master_data) = data_export_config.master {
@@ -76,9 +73,9 @@ impl Tally {
         log::info!("Importing data from Tally...");
 
         let tally_export_defi = &self.config.definition;
-        let path_tally_export_defi = get_app_base_path().join(tally_export_defi);
+        let path_tally_export_defi = Utility::get_app_base_path().join(tally_export_defi);
         if std::fs::metadata(&path_tally_export_defi).is_ok() {
-            self.parse_yaml(path_tally_export_defi);
+            self.parse_tally_export_config(path_tally_export_defi);
         } else {
             log::error!(
                 "Tally export definition file does not exist: {}",
@@ -128,7 +125,8 @@ impl Tally {
     }
 
     async fn save_company_info(&self) -> Result<(), Box<dyn Error>> {
-        let company_xml = COMPANY_XML.replace(
+        let company_req_path = Utility::get_tally_request_path("company");
+        let company_xml = Utility::read_xml_file(company_req_path)?.replace(
             "##SVCurrentCompany",
             &Utility::escape_html(&self.config.company),
         );
@@ -142,12 +140,14 @@ impl Tally {
 
     async fn post_tally_xml(&self, msg: String) -> Result<String, Box<dyn Error>> {
         let client = reqwest::Client::new();
+
         let url = format!("http://{}:{}", self.config.server, self.config.port);
+
         let response = client
             .post(&url)
             .header("Content-Length", msg.len().to_string())
-            .header("Content-Type", "text/xml;charset=utf-16")
-            .body(msg)
+            .header("Content-Type", "text/xml;charset=utf-8")
+            .body(msg.clone())
             .send()
             .await
             .map_err(|e| format!("Failed to send request: {}", e))?;
