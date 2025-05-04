@@ -1,10 +1,7 @@
 use crate::config::{
     cli::CliArgs,
     json_config::{get_config_path, Config, DatabaseConfig},
-    logger,
 };
-
-const MAX_QUERY_SIZE: usize = 50000;
 
 pub struct Database {
     config: DatabaseConfig,

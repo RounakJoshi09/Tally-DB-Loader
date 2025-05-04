@@ -1,9 +1,9 @@
+use dotenv::dotenv;
 use fern::Dispatch;
-use log::{debug, error, info, warn};
-use std::{env, fs};
+use log::info;
 use std::io;
 use std::path::Path;
-use dotenv::dotenv;
+use std::{env, fs};
 pub fn setup_logger() -> Result<(), fern::InitError> {
     dotenv().ok();
 
@@ -11,7 +11,10 @@ pub fn setup_logger() -> Result<(), fern::InitError> {
 
     if let Some(parent) = Path::new(&log_file_path).parent() {
         fs::create_dir_all(parent).map_err(|e| {
-            io::Error::new(io::ErrorKind::Other, format!("Failed to create log directory: {}", e))
+            io::Error::new(
+                io::ErrorKind::Other,
+                format!("Failed to create log directory: {}", e),
+            )
         })?;
     }
 

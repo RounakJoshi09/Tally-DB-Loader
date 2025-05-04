@@ -22,4 +22,6 @@ fn main() {
 
     database.update_command_line_config(args.clone());
     tally.update_command_line_config(args.clone());
+
+    tally.import_data();
 }

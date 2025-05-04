@@ -12,17 +12,7 @@ pub struct Field {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct Master {
-    pub name: String,
-    pub collection: String,
-    pub nature: String,
-    pub fields: Option<Vec<Field>>,
-    pub fetch: Option<Vec<String>>,
-    pub filters: Option<Vec<String>>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Transaction {
+pub struct MasterTransaction {
     pub name: String,
     pub collection: String,
     pub nature: String,
@@ -33,8 +23,8 @@ pub struct Transaction {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct DataExportConfig {
-    pub master: Option<Vec<Master>>,
-    pub transaction: Option<Vec<Transaction>>,
+    pub master: Option<Vec<MasterTransaction>>,
+    pub transaction: Option<Vec<MasterTransaction>>,
 }
 
 impl DataExportConfig {
