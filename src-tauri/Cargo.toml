@@ -25,3 +25,7 @@ fern = "0.6"
 chrono = "0.4"
 dotenv = "0.15"
 clap = { version = "4.0", features = ["derive"] }
+mysql_async = "0.36.0"
+lazy_static = "1.4"
+derive_more = { version = "2.0.1", features = ["deref_mut"] }
+reqwest = "0.12.15"

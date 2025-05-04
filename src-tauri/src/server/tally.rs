@@ -1,14 +1,22 @@
-use crate::config::{
-    cli::CliArgs,
-    definition::YamlTableConfig,
-    json_config::{get_app_base_path, get_config_path, Config, TallyConfig},
-    yaml_config::DataExportConfig,
-};
+use std::{error::Error, sync::MutexGuard};
 
+use super::database::Database;
+use crate::{
+    config::{
+        cli::CliArgs,
+        definition::YamlTableConfig,
+        json_config::{get_app_base_path, get_config_path, Config, TallyConfig},
+        utility::Utility,
+        yaml_config::DataExportConfig,
+    },
+    server::tally_xml::COMPANY_XML,
+};
 pub struct Tally {
     config: TallyConfig,
     table_master: Vec<YamlTableConfig>,
     table_transaction: Vec<YamlTableConfig>,
+    import_master: bool,
+    import_transaction: bool,
 }
 
 impl Tally {
@@ -22,6 +30,8 @@ impl Tally {
             config: config.tally,
             table_master: vec![],
             table_transaction: vec![],
+            import_master: true,
+            import_transaction: true,
         }
     }
 
@@ -62,7 +72,7 @@ impl Tally {
         log::info!("YAML file parsed successfully.");
     }
 
-    pub fn import_data(&mut self) {
+    pub async fn import_data(&mut self, database_instance: MutexGuard<'static, Database>) {
         log::info!("Importing data from Tally...");
 
         let tally_export_defi = &self.config.definition;
@@ -76,9 +86,88 @@ impl Tally {
             );
             std::process::exit(1);
         }
-    }
-}
 
-pub fn tally_init() -> Tally {
-    Tally::new()
+        if let Err(e) = database_instance.open_connection_pool().await {
+            log::error!("Failed to open database connection pool: {}", e);
+            std::process::exit(1);
+        }
+
+        if (self.config.sync == "incremental") {
+            //TBD
+        } else {
+            let mut lst_table: Vec<YamlTableConfig> = Vec::new();
+
+            if self.import_master {
+                lst_table.append(&mut self.table_master);
+            }
+            if self.import_transaction {
+                lst_table.append(&mut self.table_transaction);
+            }
+
+            if matches!(
+                database_instance.config.technology.as_str(),
+                "mssql" | "mysql" | "postgres" | "bigquery" | "csv"
+            ) {
+                log::info!(
+                    "Updating company information configuration table [{}]",
+                    chrono::Local::now().format("%Y-%m-%d")
+                );
+
+                if let Err(e) = self.save_company_info().await {
+                    log::error!("Failed to save company information: {}", e);
+                    std::process::exit(1);
+                }
+            } else {
+                log::error!(
+                    "Unsupported database technology: {}",
+                    database_instance.config.technology
+                );
+                std::process::exit(1);
+            }
+        }
+    }
+
+    async fn save_company_info(&self) -> Result<(), Box<dyn Error>> {
+        let company_xml = COMPANY_XML.replace(
+            "##SVCurrentCompany",
+            &Utility::escape_html(&self.config.company),
+        );
+
+        let company_info = self.post_tally_xml(company_xml).await?;
+
+        log::info!("Saving company information... {}", company_info);
+
+        Ok(())
+    }
+
+    async fn post_tally_xml(&self, msg: String) -> Result<String, Box<dyn Error>> {
+        let client = reqwest::Client::new();
+        let url = format!("http://{}:{}", self.config.server, self.config.port);
+        let response = client
+            .post(&url)
+            .header("Content-Length", msg.len().to_string())
+            .header("Content-Type", "text/xml;charset=utf-16")
+            .body(msg)
+            .send()
+            .await
+            .map_err(|e| format!("Failed to send request: {}", e))?;
+
+        if !response.status().is_success() {
+            log::error!(
+                "Unable to connect with Tally. Ensure Tally XML port is enabled. Status: {}",
+                response.status()
+            );
+            return Err(format!(
+                "Failed to connect to Tally server. Status: {}",
+                response.status()
+            )
+            .into());
+        }
+
+        let data = response.text_with_charset("utf-16").await?;
+
+        log::info!("Received response from Tally: {}", data);
+
+        Ok(data)
+    }
 }

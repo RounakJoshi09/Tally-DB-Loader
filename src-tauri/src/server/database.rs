@@ -2,9 +2,11 @@ use crate::config::{
     cli::CliArgs,
     json_config::{get_config_path, Config, DatabaseConfig},
 };
+use mysql_async::Error as MySQLError;
+use mysql_async::{OptsBuilder, Pool};
 
 pub struct Database {
-    config: DatabaseConfig,
+    pub config: DatabaseConfig,
 }
 
 impl Database {
@@ -43,9 +45,50 @@ impl Database {
         }
         log::info!("Database configuration updated from command line arguments.");
     }
-}
 
-// Create a public function to initialize the database
-pub fn database_init() -> Database {
-    Database::new()
+    pub async fn open_connection_pool(&self) -> Result<(), String> {
+        if self.config.technology == "mysql" {
+            let opts = OptsBuilder::default()
+                .ip_or_hostname(&self.config.server)
+                .tcp_port(self.config.port)
+                .db_name(Some(&self.config.schema))
+                .user(Some(&self.config.username))
+                .pass(Some(&self.config.password))
+                .ssl_opts(if self.config.ssl {
+                    Some(mysql_async::SslOpts::default())
+                } else {
+                    None
+                });
+
+            let pool = Pool::new(opts);
+
+            match pool.get_conn().await {
+                Ok(conn) => {
+                    log::info!("MySQL connection established successfully.");
+                    conn.disconnect().await.unwrap_or_else(|e| {
+                        log::warn!("Failed to disconnect MySQL connection: {:?}", e);
+                    });
+                    Ok(())
+                }
+                Err(err) => {
+                    let error_message = match err {
+                        MySQLError::Io(_) => "Unable to make MySQL connection on specified port",
+                        MySQLError::Url(_) => {
+                            "Unable to make MySQL connection to servername or IP address"
+                        }
+                        MySQLError::Server(server_error) => match server_error.code {
+                            1049 => "Invalid MySQL database name",
+                            1045 => "Invalid MySQL username/password",
+                            1251 => "Invalid MySQL username/password/Authentication",
+                            _ => "Unknown MySQL server error",
+                        },
+                        _ => "An unknown error occurred",
+                    };
+                    Err(error_message.to_string())
+                }
+            }
+        } else {
+            Ok(())
+        }
+    }
 }
