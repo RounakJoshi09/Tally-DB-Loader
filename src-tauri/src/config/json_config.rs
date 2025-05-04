@@ -1,5 +1,8 @@
+use std::{env, path::PathBuf};
+use tauri::{AppHandle, Manager};
+
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
-struct DatabaseConfig {
+pub struct DatabaseConfig {
     pub technology: String,
     pub server: String,
     pub port: u16,
@@ -11,7 +14,7 @@ struct DatabaseConfig {
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
-struct TallyConfig {
+pub struct TallyConfig {
     pub definition: String,
     pub server: String,
     pub port: u16,
@@ -44,4 +47,16 @@ impl Config {
     pub fn update_tally(&mut self, tally: TallyConfig) {
         self.tally = tally;
     }
+}
+
+pub fn get_config_path() -> PathBuf {
+    let exe_path = env::current_exe().expect("Failed to get current exe path");
+    exe_path
+        .parent()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .parent()
+        .expect("Failed to get parent path")
+        .join("config.json")
 }
