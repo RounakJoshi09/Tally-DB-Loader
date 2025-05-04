@@ -46,4 +46,15 @@ impl Utility {
             .join("src")
             .join(format!("tally_request/{}.xml", request_type))
     }
+    pub fn format_date(date: &str) -> Result<String, String> {
+        if date.len() != 8 {
+            return Err("Invalid date format. Expected YYYYMMDD.".to_string());
+        }
+
+        let year = &date[0..4];
+        let month = &date[4..6];
+        let day = &date[6..8];
+
+        Ok(format!("{}-{}-{}", year, month, day))
+    }
 }

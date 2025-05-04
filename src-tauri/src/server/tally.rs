@@ -124,16 +124,28 @@ impl Tally {
         }
     }
 
-    async fn save_company_info(&self) -> Result<(), Box<dyn Error>> {
+    async fn save_company_info(&mut self) -> Result<(), Box<dyn Error>> {
         let company_req_path = Utility::get_tally_request_path("company");
         let company_xml = Utility::read_xml_file(company_req_path)?.replace(
             "##SVCurrentCompany",
             &Utility::escape_html(&self.config.company),
         );
 
-        let company_info = self.post_tally_xml(company_xml).await?;
+        let mut company_info = self.post_tally_xml(company_xml).await?;
 
-        log::info!("Saving company information... {}", company_info);
+        if company_info.ends_with(",\"†\",\r\n") {
+            company_info = company_info.replace(",\"†\",\r\n", "");
+            let company_info_parts: Vec<&str> = company_info.split("\",\"").collect();
+
+            let company_name = company_info_parts[0].replace("\"", "");
+
+            if self.config.todate == "auto" || self.config.fromdate == "auto" {
+                self.config.fromdate =
+                    Utility::format_date(&company_info_parts[2].replace("\"", ""))?;
+                self.config.todate =
+                    Utility::format_date(&company_info_parts[1].replace("\"", ""))?;
+            }
+        }
 
         Ok(())
     }
