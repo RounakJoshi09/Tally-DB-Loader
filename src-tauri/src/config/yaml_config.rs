@@ -32,15 +32,15 @@ pub struct Transaction {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct ExportConfig {
+pub struct DataExportConfig {
     pub master: Option<Vec<Master>>,
     pub transaction: Option<Vec<Transaction>>,
 }
 
-impl ExportConfig {
+impl DataExportConfig {
     pub fn parse_yaml_file<P: AsRef<Path>>(path: P) -> Result<Self, Box<dyn Error>> {
         let content = fs::read_to_string(path)?;
-        let config: ExportConfig = serde_yaml::from_str(&content)?;
+        let config: DataExportConfig = serde_yaml::from_str(&content)?;
         Ok(config)
     }
 }

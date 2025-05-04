@@ -1,3 +1,4 @@
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
 struct DatabaseConfig {
     pub technology: String,
     pub server: String,
@@ -9,6 +10,7 @@ struct DatabaseConfig {
     pub loadmethod: String,
 }
 
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
 struct TallyConfig {
     pub definition: String,
     pub server: String,
@@ -20,6 +22,7 @@ struct TallyConfig {
     pub company: String,
 }
 
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct Config {
     pub database: DatabaseConfig,
     pub tally: TallyConfig,
